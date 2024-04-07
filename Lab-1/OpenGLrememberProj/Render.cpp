@@ -47,7 +47,7 @@ const int count = 3;
 const int size = 8 + count * 2;
 
 double from = 0;
-double to = 10;
+double to = 16;
 double angle0 = 0;
 double maxAngle = pi / 2;
 double sliceStep = .1;
@@ -100,21 +100,29 @@ void point(Point3D p, Vector3D normal) {
 	glVertex3d(p1.x, p1.y, p1.z);
 }
 
-void drawPlane(double points[][2], int size, double p0[2], double plane, double pivot[2], double angle, int reverse) {
-	Point3D pc = Point3D(p0[0], p0[1], plane).rotate(pivot, angle);
+void drawPlane(double points[][2], int size, double pc0[2], double plane, double pivot[2], double angle, int reverse) {
+	Point3D pc = Point3D(pc0[0], pc0[1], plane).rotate(pivot, angle);
 	for (size_t i = 0; i < size; i++)
 	{
 		int j = (i + 1) % size;
 		if (!colorPolicy) setColor();
 		Point3D p0 = Point3D(points[i][0], points[i][1], plane).rotate(pivot, angle);
 		Point3D p1 = Point3D(points[j][0], points[j][1], plane).rotate(pivot, angle);
+		glTexCoord2d(reverse + (1 - reverse * 2) * .5 / 12 * pc0[0], .5 / 15 * pc0[1]);
 		point(pc, pc.normal(&p0, &p1) * (1 - 2 * reverse));
+		glTexCoord2d(reverse + (1 - reverse * 2) * .5 / 12 * points[i][0], .5 / 15 * points[i][1]);
 		point(p0, p0.normal(&p1, &pc) * (1 - 2 * reverse));
+		glTexCoord2d(reverse + (1 - reverse * 2) * .5 / 12 * points[j][0], .5 / 15 * points[j][1]);
 		point(p1, p1.normal(&pc, &p0) * (1 - 2 * reverse));
 	}
 }
 
-void drawSides(double points[][2], int size, double plane0, double plane1, double pivot[2], double a0, double a1) {
+
+
+void drawSides(double points[][2], int size, double plane0, double plane1, double pivot[2], double a0, double a1, double textureOffsetY0, double textureOffsetY1) {
+	double sumLength = 0;
+	double curLength = 0;
+	double textureOffsetX = 0;
 	if (plane0 > plane1)
 	{
 		double p = plane0;
@@ -127,20 +135,36 @@ void drawSides(double points[][2], int size, double plane0, double plane1, doubl
 	for (size_t i = 0; i < size; i++)
 	{
 		int j = (i + 1) % size;
+		Point3D p00_0 = Point3D(points[i][0], points[i][1], plane0).rotate(pivot, a0);
+		Point3D p11_0 = Point3D(points[j][0], points[j][1], plane0).rotate(pivot, a0);
+		double l = p11_0.subtract(&p00_0).length();
+		sumLength += l;
+	}
+	for (size_t i = 0; i < size; i++)
+	{
+		int j = (i + 1) % size;
 		if (!colorPolicy) setColor();
 		Point3D p00_0 = Point3D(points[i][0], points[i][1], plane0).rotate(pivot, a0);
 		Point3D p11_0 = Point3D(points[j][0], points[j][1], plane0).rotate(pivot, a0);
 		Point3D p11_1 = Point3D(points[j][0], points[j][1], plane1).rotate(pivot, a1);
+		double l = p11_0.subtract(&p00_0).length();
+		glTexCoord2d(1. / sumLength * (curLength), .5 + .5 * textureOffsetY0);
 		point(p00_0, p00_0.normal(&p11_0, &p11_1));
+		glTexCoord2d(1. / sumLength * (curLength + l), .5 + .5 * textureOffsetY0);
 		point(p11_0, p11_0.normal(&p11_1, &p00_0));
+		glTexCoord2d(1. / sumLength * (curLength + l), .5 + .5 * textureOffsetY1);
 		point(p11_1, p11_1.normal(&p00_0, &p11_0));
 		if (!colorPolicy) setColor();
 		Point3D p00_1 = Point3D(points[i][0], points[i][1], plane1).rotate(pivot, a1);
+		glTexCoord2d(1. / sumLength * (curLength), .5 + .5 * textureOffsetY0);
 		point(p00_0, p00_0.normal(&p11_1, &p00_1));
 		//point(p00_0, p00_0.normal(&p11_0, &p11_1));
+		glTexCoord2d(1. / sumLength * (curLength + l), .5 + .5 * textureOffsetY1);
 		point(p11_1, p11_1.normal(&p00_1, &p00_0));
 		//point(p11_1, p11_1.normal(&p00_0, &p11_0));
+		glTexCoord2d(1. / sumLength * (curLength), .5 + .5 * textureOffsetY1);
 		point(p00_1, p00_1.normal(&p00_0, &p11_1));
+		curLength += l;
 	}
 }
 
@@ -160,36 +184,40 @@ void draw(double points[size][2]) {
 	int steps = fabs(angle) / sliceStep + additionalSlices;
 	double angleStep = angle / (steps + 1);
 	double heightStep = (to - from) / (steps + 1);
-	drawPlane(points, size, p0, from, p3, angle0, 0);
+	drawPlane(points, size, p0, from, p3, angle0, 1);
 	for (size_t i = 0; i < steps + 1; i++)
 	{
-		drawSides(points, size, from + heightStep * i, from + heightStep * (i + 1), p3, angle0 + angleStep * i, angle0 + angleStep * (i + 1));
+		drawSides(points, size, from + heightStep * i, from + heightStep * (i + 1), p3,
+			angle0 + angleStep * i, angle0 + angleStep * (i + 1),
+			i * heightStep / fabs(to - from), (i + 1) * heightStep / fabs(to - from));
 	}
-	drawPlane(points, size, p0, to, p3, angle, 1);
+	drawPlane(points, size, p0, to, p3, angle, 0);
 }
 
-void loadTexture(char* name, GLuint* id) {
+void loadTexture(char* filename, GLuint* texId) {
+	RGBTRIPLE *texarray;
 
-	//массив трехбайтных элементов  (R G B)
-	RGBTRIPLE* texarray;
-
-	//массив символов, (высота*ширина*4      4, потомучто   выше, мы указали использовать по 4 байта на пиксель текстуры - R G B A)
-	char* texCharArray;
+	//������ ��������, (������*������*4      4, ���������   ����, �� ������� ������������ �� 4 ����� �� ������� �������� - R G B A)
+	char *texCharArray;
 	int texW, texH;
-	OpenGL::LoadBMP(name, &texW, &texH, &texarray);
+	OpenGL::LoadBMP(filename, &texW, &texH, &texarray);
 	OpenGL::RGBtoChar(texarray, texW, texH, &texCharArray);
 
-	//генерируем ИД для текстуры
-	glGenTextures(1, id);
-	//биндим айдишник, все что будет происходить с текстурой, будте происходить по этому ИД
-	glBindTexture(GL_TEXTURE_2D, *id);
 
-	//загружаем текстуру в видеопямять, в оперативке нам больше  она не нужна
+
+	//���������� �� ��� ��������
+	glGenTextures(1, texId);
+	//������ ��������, ��� ��� ����� ����������� � ���������, ����� ����������� �� ����� ��
+	glBindTexture(GL_TEXTURE_2D, *texId);
+
+	//��������� �������� � �����������, � ���������� ��� ������  ��� �� �����
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, texW, texH, 0, GL_RGBA, GL_UNSIGNED_BYTE, texCharArray);
-	//отчистка памяти
+
+	//�������� ������
 	free(texCharArray);
 	free(texarray);
 
+	//������� ����
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
@@ -500,8 +528,8 @@ void initRender(OpenGL *ogl)
 
 	//������ ����������� ���������  (R G B)
 	loadTexture("texture.bmp", &texIds[0]);
-	//loadTexture("texture0.bmp", &texIds[0]);
-	//loadTexture("texture1.bmp", &texIds[2]);
+	loadTexture("texture1.bmp", &texIds[1]);
+	loadTexture("texture2.bmp", &texIds[2]);
 
 
 	//������ � ���� ����������� � "������"
@@ -530,7 +558,6 @@ void initRender(OpenGL *ogl)
 	camera.fi2 = 0.8;
 }
 
-
 void Render(OpenGL *ogl)
 {
 
@@ -548,8 +575,10 @@ void Render(OpenGL *ogl)
 
 
 	//альфаналожение
-	glEnable(GL_BLEND);
-	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+	/////////////////////////////////////////////////////////////
+	//glEnable(GL_BLEND);
+	//glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+	/////////////////////////////////////////////////////////////
 
 
 	//настройка материала
@@ -571,7 +600,7 @@ void Render(OpenGL *ogl)
 	//чтоб было красиво, без квадратиков (сглаживание освещения)
 	glShadeModel(GL_SMOOTH);
 	//===================================
-	//Прогать тут  
+	//Прогать тут
 
 
 	//������ ��������� ���������� ��������
@@ -582,7 +611,7 @@ void Render(OpenGL *ogl)
 
 	glBindTexture(GL_TEXTURE_2D, getTextureId());
 
-	glColor3d(0.6, 0.6, 0.6);
+	/*glColor3d(0.6, 0.6, 0.6);
 	glBegin(GL_QUADS);
 
 	glNormal3d(0, 0, 1);
@@ -595,11 +624,11 @@ void Render(OpenGL *ogl)
 	glTexCoord2d(0, 1);
 	glVertex2dv(D);
 
-	glEnd();
+	glEnd();*/
 
 
 	//////////////////////////////////////////////
-	//Render(0.1);
+	Render(0.1);
 	//////////////////////////////////////////////
 
 
