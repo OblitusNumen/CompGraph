@@ -1,4 +1,8 @@
 #include "Render.h"
+#include <math.h>
+#include <stdio.h>
+
+#include "Point3D.h"
 
 #include <sstream>
 #include <iostream>
@@ -7,8 +11,6 @@
 #include <windows.h>
 #include <GL\GL.h>
 #include <GL\GLU.h>
-#include <math.h>
-#include <stdio.h>
 
 #include "MyOGL.h"
 
@@ -25,11 +27,16 @@ int col = 0;
 const int colors = 100000;
 double color[colors];
 
+const int textureCount = 3;
+int texture = 0;
+GLuint texIds[textureCount];
+
 //x,y,z,density,r,g,b
 int lightSourceCount = 3;
 double lightSources[][7] = { { 0, 0, 0, 0.2, .8, .2, .6 }, { 5, 10, 4, 0.03, .02, .06, .08 }, { 10, 5, 8, 0.4, .9, .9, .6 } };
 
-int colorPolicy = 1;
+int colorPolicy = 0;
+int colorPolicyCount = 3;
 
 double p0[]{ 6, 6 };
 double p1[]{11, 4};
@@ -78,66 +85,62 @@ void setColor(double x, double y, double z) {
 		g += lightSources[i][5] / dist;
 		b += lightSources[i][6] / dist;
 	}
-	glColor3d(r, g, b);
+	glColor4d(r, g, b, .5);
 }
 
 void setColor() {
-	glColor3d(color[col++], color[col++], color[col++]);
+	glColor4d(color[col++], color[col++], color[col++], .5);
 }
 
-struct Point3D {
-	const double x;
-	const double y;
-	const double z;
-
-	Point3D(double xx, double yy, double zz) : x(xx), y(yy), z(zz){}
-
-	Point3D rotate(double pivot[2], double angle) {
-		double r = sqrt((x - pivot[0]) * (x - pivot[0]) + (y - pivot[1]) * (y - pivot[1]));
-		double a0 = acos((pivot[0] - x) / r);
-		if (y > pivot[1]) a0 = -a0;
-		return Point3D(cos(a0 + angle) * r + pivot[0], sin(a0 + angle) * r + pivot[1], z);
-	}
-
-	Point3D shift(double xShift, double yShift, double zShift) {
-		return Point3D(x + xShift, y + yShift, z + zShift);
-	}
-};
-
-Point3D normal(Point3D p1, Point3D p2, Point3D p3) {
-
-}
-
-void point(Point3D p) {
+void point(Point3D p, Vector3D normal) {
 	if (colorPolicy == 1) setColor(p.x, p.y, p.z);
 	Point3D p1 = p.shift(xShift, yShift, zShift);
 	if (colorPolicy == 2) setColor(p1.x, p1.y, p1.z);
+	glNormal3d(normal.x, normal.y, normal.z);
 	glVertex3d(p1.x, p1.y, p1.z);
 }
 
-void drawPlane(double points[][2], int size, double p0[2], double plane, double pivot[2], double angle) {
+void drawPlane(double points[][2], int size, double p0[2], double plane, double pivot[2], double angle, int reverse) {
+	Point3D pc = Point3D(p0[0], p0[1], plane).rotate(pivot, angle);
 	for (size_t i = 0; i < size; i++)
 	{
 		int j = (i + 1) % size;
 		if (!colorPolicy) setColor();
-		point(Point3D(p0[0], p0[1], plane).rotate(pivot, angle));
-		point(Point3D(points[i][0], points[i][1], plane).rotate(pivot, angle));
-		point(Point3D(points[j][0], points[j][1], plane).rotate(pivot, angle));
+		Point3D p0 = Point3D(points[i][0], points[i][1], plane).rotate(pivot, angle);
+		Point3D p1 = Point3D(points[j][0], points[j][1], plane).rotate(pivot, angle);
+		point(pc, pc.normal(&p0, &p1) * (1 - 2 * reverse));
+		point(p0, p0.normal(&p1, &pc) * (1 - 2 * reverse));
+		point(p1, p1.normal(&pc, &p0) * (1 - 2 * reverse));
 	}
 }
 
-void drawSides(double points[][2], int size, double plane1, double plane2, double pivot[2], double a0, double a1) {
+void drawSides(double points[][2], int size, double plane0, double plane1, double pivot[2], double a0, double a1) {
+	if (plane0 > plane1)
+	{
+		double p = plane0;
+		plane0 = plane1;
+		plane1 = p;
+		p = a0;
+		a0 = a1;
+		a1 = p;
+	}
 	for (size_t i = 0; i < size; i++)
 	{
 		int j = (i + 1) % size;
 		if (!colorPolicy) setColor();
-		point(Point3D(points[i][0], points[i][1], plane1).rotate(pivot, a0));
-		point(Point3D(points[j][0], points[j][1], plane1).rotate(pivot, a0));
-		point(Point3D(points[j][0], points[j][1], plane2).rotate(pivot, a1));
+		Point3D p00_0 = Point3D(points[i][0], points[i][1], plane0).rotate(pivot, a0);
+		Point3D p11_0 = Point3D(points[j][0], points[j][1], plane0).rotate(pivot, a0);
+		Point3D p11_1 = Point3D(points[j][0], points[j][1], plane1).rotate(pivot, a1);
+		point(p00_0, p00_0.normal(&p11_0, &p11_1));
+		point(p11_0, p11_0.normal(&p11_1, &p00_0));
+		point(p11_1, p11_1.normal(&p00_0, &p11_0));
 		if (!colorPolicy) setColor();
-		point(Point3D(points[i][0], points[i][1], plane1).rotate(pivot, a0));
-		point(Point3D(points[i][0], points[i][1], plane2).rotate(pivot, a1));
-		point(Point3D(points[j][0], points[j][1], plane2).rotate(pivot, a1));
+		Point3D p00_1 = Point3D(points[i][0], points[i][1], plane1).rotate(pivot, a1);
+		point(p00_0, p00_0.normal(&p11_1, &p00_1));
+		//point(p00_0, p00_0.normal(&p11_0, &p11_1));
+		point(p11_1, p11_1.normal(&p00_1, &p00_0));
+		//point(p11_1, p11_1.normal(&p00_0, &p11_0));
+		point(p00_1, p00_1.normal(&p00_0, &p11_1));
 	}
 }
 
@@ -157,12 +160,46 @@ void draw(double points[size][2]) {
 	int steps = fabs(angle) / sliceStep + additionalSlices;
 	double angleStep = angle / (steps + 1);
 	double heightStep = (to - from) / (steps + 1);
-	drawPlane(points, size, p0, from, p3, angle0);
+	drawPlane(points, size, p0, from, p3, angle0, 0);
 	for (size_t i = 0; i < steps + 1; i++)
 	{
 		drawSides(points, size, from + heightStep * i, from + heightStep * (i + 1), p3, angle0 + angleStep * i, angle0 + angleStep * (i + 1));
 	}
-	drawPlane(points, size, p0, to, p3, angle);
+	drawPlane(points, size, p0, to, p3, angle, 1);
+}
+
+void loadTexture(char* name, GLuint* id) {
+
+	//массив трехбайтных элементов  (R G B)
+	RGBTRIPLE* texarray;
+
+	//массив символов, (высота*ширина*4      4, потомучто   выше, мы указали использовать по 4 байта на пиксель текстуры - R G B A)
+	char* texCharArray;
+	int texW, texH;
+	OpenGL::LoadBMP(name, &texW, &texH, &texarray);
+	OpenGL::RGBtoChar(texarray, texW, texH, &texCharArray);
+
+	//генерируем ИД для текстуры
+	glGenTextures(1, id);
+	//биндим айдишник, все что будет происходить с текстурой, будте происходить по этому ИД
+	glBindTexture(GL_TEXTURE_2D, *id);
+
+	//загружаем текстуру в видеопямять, в оперативке нам больше  она не нужна
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, texW, texH, 0, GL_RGBA, GL_UNSIGNED_BYTE, texCharArray);
+	//отчистка памяти
+	free(texCharArray);
+	free(texarray);
+
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+
+	glBindTexture(GL_TEXTURE_2D, 0);
+}
+
+GLuint getTextureId() {
+	return texIds[texture];
 }
 
 void Render(double delta_time)
@@ -425,6 +462,18 @@ void keyDownEvent(OpenGL *ogl, int key)
 	{
 		light.pos = camera.pos;
 	}
+
+	if (key == 'N')
+	{
+		texture++;
+		texture -= textureCount * (texture >= textureCount);
+	}
+
+	if (key == 'P')
+	{
+		colorPolicy++;
+		colorPolicy -= colorPolicyCount * (colorPolicy >= colorPolicyCount);
+	}
 }
 
 void keyUpEvent(OpenGL *ogl, int key)
@@ -433,8 +482,6 @@ void keyUpEvent(OpenGL *ogl, int key)
 }
 
 
-
-GLuint texId;
 
 //����������� ����� ������ ��������
 void initRender(OpenGL *ogl)
@@ -452,33 +499,9 @@ void initRender(OpenGL *ogl)
 	
 
 	//������ ����������� ���������  (R G B)
-	RGBTRIPLE *texarray;
-
-	//������ ��������, (������*������*4      4, ���������   ����, �� ������� ������������ �� 4 ����� �� ������� �������� - R G B A)
-	char *texCharArray;
-	int texW, texH;
-	OpenGL::LoadBMP("texture.bmp", &texW, &texH, &texarray);
-	OpenGL::RGBtoChar(texarray, texW, texH, &texCharArray);
-
-	
-	
-	//���������� �� ��� ��������
-	glGenTextures(1, &texId);
-	//������ ��������, ��� ��� ����� ����������� � ���������, ����� ����������� �� ����� ��
-	glBindTexture(GL_TEXTURE_2D, texId);
-
-	//��������� �������� � �����������, � ���������� ��� ������  ��� �� �����
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, texW, texH, 0, GL_RGBA, GL_UNSIGNED_BYTE, texCharArray);
-
-	//�������� ������
-	free(texCharArray);
-	free(texarray);
-
-	//������� ����
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST); 
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	loadTexture("texture.bmp", &texIds[0]);
+	//loadTexture("texture0.bmp", &texIds[0]);
+	//loadTexture("texture1.bmp", &texIds[2]);
 
 
 	//������ � ���� ����������� � "������"
@@ -508,9 +531,6 @@ void initRender(OpenGL *ogl)
 }
 
 
-
-
-
 void Render(OpenGL *ogl)
 {
 
@@ -527,31 +547,31 @@ void Render(OpenGL *ogl)
 		glEnable(GL_LIGHTING);
 
 
-	//��������������
-	//glEnable(GL_BLEND);
-	//glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+	//альфаналожение
+	glEnable(GL_BLEND);
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
 
-	//��������� ���������
+	//настройка материала
 	GLfloat amb[] = { 0.2, 0.2, 0.1, 1. };
 	GLfloat dif[] = { 0.4, 0.65, 0.5, 1. };
 	GLfloat spec[] = { 0.9, 0.8, 0.3, 1. };
 	GLfloat sh = 0.1f * 256;
 
 
-	//�������
+	//фоновая
 	glMaterialfv(GL_FRONT, GL_AMBIENT, amb);
-	//��������
+	//дифузная
 	glMaterialfv(GL_FRONT, GL_DIFFUSE, dif);
-	//����������
+	//зеркальная
 	glMaterialfv(GL_FRONT, GL_SPECULAR, spec); \
-		//������ �����
+		//размер блика
 		glMaterialf(GL_FRONT, GL_SHININESS, sh);
 
-	//���� ���� �������, ��� ����������� (����������� ���������)
+	//чтоб было красиво, без квадратиков (сглаживание освещения)
 	glShadeModel(GL_SMOOTH);
 	//===================================
-	//������� ���  
+	//Прогать тут  
 
 
 	//������ ��������� ���������� ��������
@@ -560,7 +580,7 @@ void Render(OpenGL *ogl)
 	double C[2] = { 4, 4 };
 	double D[2] = { -4, 4 };
 
-	glBindTexture(GL_TEXTURE_2D, texId);
+	glBindTexture(GL_TEXTURE_2D, getTextureId());
 
 	glColor3d(0.6, 0.6, 0.6);
 	glBegin(GL_QUADS);
@@ -576,6 +596,15 @@ void Render(OpenGL *ogl)
 	glVertex2dv(D);
 
 	glEnd();
+
+
+	//////////////////////////////////////////////
+	//Render(0.1);
+	//////////////////////////////////////////////
+
+
+
+
 	//����� ��������� ���������� ��������
 
 
@@ -602,14 +631,16 @@ void Render(OpenGL *ogl)
 
 
 	std::stringstream ss;
-	ss << "T - ���/���� �������" << std::endl;
-	ss << "L - ���/���� ���������" << std::endl;
-	ss << "F - ���� �� ������" << std::endl;
-	ss << "G - ������� ���� �� �����������" << std::endl;
-	ss << "G+��� ������� ���� �� ���������" << std::endl;
-	ss << "�����. �����: (" << light.pos.X() << ", " << light.pos.Y() << ", " << light.pos.Z() << ")" << std::endl;
-	ss << "�����. ������: (" << camera.pos.X() << ", " << camera.pos.Y() << ", " << camera.pos.Z() << ")" << std::endl;
-	ss << "��������� ������: R="  << camera.camDist << ", fi1=" << camera.fi1 << ", fi2=" << camera.fi2 << std::endl;
+	ss << "T - Toggle textures" << std::endl;
+	ss << "L - Toggle lighting" << std::endl;
+	ss << "F - Toggle light from camera" << std::endl;
+	ss << "G - move light horizontally" << std::endl;
+	ss << "G+LMK move light vertically" << std::endl;
+	ss << "light coordinates: (" << light.pos.X() << ", " << light.pos.Y() << ", " << light.pos.Z() << ")" << std::endl;
+	ss << "cam coordinates: (" << camera.pos.X() << ", " << camera.pos.Y() << ", " << camera.pos.Z() << ")" << std::endl;
+	ss << "camera params: R=" << camera.camDist << ", fi1=" << camera.fi1 << ", fi2=" << camera.fi2 << std::endl;
+	ss << "N - Next texture" << std::endl;
+	ss << "P - Next color policy" << std::endl;
 	
 	rec.setText(ss.str().c_str());
 	rec.Draw();

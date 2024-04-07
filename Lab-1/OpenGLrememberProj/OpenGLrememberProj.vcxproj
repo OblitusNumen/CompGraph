@@ -89,6 +89,7 @@
     <ClInclude Include="MyVector3d.h" />
     <ClInclude Include="Object.h" />
     <ClInclude Include="OpenGLrememberProj.h" />
+    <ClInclude Include="Point3D.h" />
     <ClInclude Include="Primitives.h" />
     <ClInclude Include="PrimitivesStatic.h" />
     <ClInclude Include="Ray.h" />
@@ -101,6 +102,7 @@
     <ClCompile Include="MyOGL.cpp" />
     <ClCompile Include="Object.cpp" />
     <ClCompile Include="OpenGLrememberProj.cpp" />
+    <ClCompile Include="Point3D.cpp" />
     <ClCompile Include="Primitives.cpp" />
     <ClCompile Include="PrimitivesStatic.cpp" />
     <ClCompile Include="Render.cpp" />
