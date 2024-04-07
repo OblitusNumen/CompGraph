@@ -85,18 +85,34 @@ void setColor() {
 	glColor3d(color[col++], color[col++], color[col++]);
 }
 
-void point(double x, double y, double z, double pivot[2], double angle) {
-	double r = sqrt((x - pivot[0]) * (x - pivot[0]) + (y - pivot[1]) * (y - pivot[1]));
-	double a0 = acos((pivot[0] - x) / r);
-	if (y > pivot[1]) a0 = -a0;
-	x = cos(a0 + angle) * r + pivot[0];
-	y = sin(a0 + angle) * r + pivot[1];
-	if (colorPolicy == 1) setColor(x, y, z);
-	x += xShift;
-	y += yShift;
-	z += zShift;
-	if (colorPolicy == 2) setColor(x, y, z);
-	glVertex3d(x, y, z);
+struct Point3D {
+	const double x;
+	const double y;
+	const double z;
+
+	Point3D(double xx, double yy, double zz) : x(xx), y(yy), z(zz){}
+
+	Point3D rotate(double pivot[2], double angle) {
+		double r = sqrt((x - pivot[0]) * (x - pivot[0]) + (y - pivot[1]) * (y - pivot[1]));
+		double a0 = acos((pivot[0] - x) / r);
+		if (y > pivot[1]) a0 = -a0;
+		return Point3D(cos(a0 + angle) * r + pivot[0], sin(a0 + angle) * r + pivot[1], z);
+	}
+
+	Point3D shift(double xShift, double yShift, double zShift) {
+		return Point3D(x + xShift, y + yShift, z + zShift);
+	}
+};
+
+Point3D normal(Point3D p1, Point3D p2, Point3D p3) {
+
+}
+
+void point(Point3D p) {
+	if (colorPolicy == 1) setColor(p.x, p.y, p.z);
+	Point3D p1 = p.shift(xShift, yShift, zShift);
+	if (colorPolicy == 2) setColor(p1.x, p1.y, p1.z);
+	glVertex3d(p1.x, p1.y, p1.z);
 }
 
 void drawPlane(double points[][2], int size, double p0[2], double plane, double pivot[2], double angle) {
@@ -104,9 +120,9 @@ void drawPlane(double points[][2], int size, double p0[2], double plane, double 
 	{
 		int j = (i + 1) % size;
 		if (!colorPolicy) setColor();
-		point(p0[0], p0[1], plane, pivot, angle);
-		point(points[i][0], points[i][1], plane, pivot, angle);
-		point(points[j][0], points[j][1], plane, pivot, angle);
+		point(Point3D(p0[0], p0[1], plane).rotate(pivot, angle));
+		point(Point3D(points[i][0], points[i][1], plane).rotate(pivot, angle));
+		point(Point3D(points[j][0], points[j][1], plane).rotate(pivot, angle));
 	}
 }
 
@@ -115,13 +131,13 @@ void drawSides(double points[][2], int size, double plane1, double plane2, doubl
 	{
 		int j = (i + 1) % size;
 		if (!colorPolicy) setColor();
-		point(points[i][0], points[i][1], plane1, pivot, a0);
-		point(points[j][0], points[j][1], plane1, pivot, a0);
-		point(points[j][0], points[j][1], plane2, pivot, a1);
+		point(Point3D(points[i][0], points[i][1], plane1).rotate(pivot, a0));
+		point(Point3D(points[j][0], points[j][1], plane1).rotate(pivot, a0));
+		point(Point3D(points[j][0], points[j][1], plane2).rotate(pivot, a1));
 		if (!colorPolicy) setColor();
-		point(points[i][0], points[i][1], plane1, pivot, a0);
-		point(points[i][0], points[i][1], plane2, pivot, a1);
-		point(points[j][0], points[j][1], plane2, pivot, a1);
+		point(Point3D(points[i][0], points[i][1], plane1).rotate(pivot, a0));
+		point(Point3D(points[i][0], points[i][1], plane2).rotate(pivot, a1));
+		point(Point3D(points[j][0], points[j][1], plane2).rotate(pivot, a1));
 	}
 }
 
@@ -201,6 +217,8 @@ void Render(double delta_time)
 	draw(points);
 	glEnd();
 }
+
+/////////////////////////////////////////////////
 
 bool textureMode = true;
 bool lightMode = true;
