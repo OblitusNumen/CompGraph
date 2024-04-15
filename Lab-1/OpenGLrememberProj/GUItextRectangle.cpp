@@ -54,7 +54,7 @@ void GuiTextRectangle::setSize(int width, int height)
 	
 	DeleteObject(d_func()->bitmap);
 
-	//повнимательнее проверить!!!!
+	//пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ!!!!
 	
 	_d->h = height;
 	_d->w = width;
@@ -81,7 +81,7 @@ void GuiTextRectangle::setSize(int width, int height)
 	_d->_tmp = new unsigned char[_d->w*_d->h * 4];
 	
 
-	//прямоугольник для текста
+	//пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
 
 
 	glDeleteTextures(1, &(_d->tex_id));
@@ -91,7 +91,7 @@ void GuiTextRectangle::setSize(int width, int height)
 
 	
 
-	//наводим шмон
+	//пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
@@ -130,12 +130,12 @@ void GuiTextRectangle::setText(const char* text, char r, char g , char b )
 	SetBkColor(_d->dc, RGB(255, 255, 255));
 	SetTextColor(_d->dc, RGB(r, g, b));
 	
-	//рисуем текст
+	//пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ
 	DrawText(_d->dc, text, -1, &(_d->r), 0);
-	//биндим айдишник, все что будет происходить с текстурой, будте происходить по этому ИД
+	//пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅ
 
 	glBindTexture(GL_TEXTURE_2D, _d->tex_id);
-	//загружаем текстуру в видеопямять, в оперативке нам больше  она не нужна
+	//пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ  пїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅ
 
 	unsigned char *_tmp = _d->_tmp;
 	for (int i = 0; i < _d->h; ++i)

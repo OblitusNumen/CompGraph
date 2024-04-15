@@ -161,7 +161,7 @@ public:
 				*(mas + i*width * 4 + j * 4 + 0) = arr[(i)*width + j].rgbtRed;
 				*(mas + i*width * 4 + j * 4 + 1) = arr[(i)*width + j].rgbtGreen;
 				*(mas + i*width * 4 + j * 4 + 2) = arr[(i)*width + j].rgbtBlue;
-				*(mas + i*width * 4 + j * 4 + 3) = 0;
+				*(mas + i*width * 4 + j * 4 + 3) = 255;
 			}
 		*out = mas;
 		return 1;

@@ -27,6 +27,7 @@ int col = 0;
 const int colors = 100000;
 double color[colors];
 
+int alpha = 1;
 const int textureCount = 3;
 int texture = 0;
 GLuint texIds[textureCount];
@@ -576,8 +577,10 @@ void Render(OpenGL *ogl)
 
 	//альфаналожение
 	/////////////////////////////////////////////////////////////
-	//glEnable(GL_BLEND);
-	//glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+	if (alpha) {
+		glEnable(GL_BLEND);
+		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+	}
 	/////////////////////////////////////////////////////////////
 
 
