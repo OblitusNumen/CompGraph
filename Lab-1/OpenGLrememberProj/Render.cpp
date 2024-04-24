@@ -503,6 +503,11 @@ void keyDownEvent(OpenGL *ogl, int key)
 		colorPolicy++;
 		colorPolicy -= colorPolicyCount * (colorPolicy >= colorPolicyCount);
 	}
+
+	if (key == 'A')
+	{
+		alpha = !alpha;
+	}
 }
 
 void keyUpEvent(OpenGL *ogl, int key)
