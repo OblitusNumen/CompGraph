@@ -7,9 +7,11 @@ typedef Point3D Vector3D;
 class Point3D
 {
 public:
-	const double x;
-	const double y;
-	const double z;
+	double x;
+	double y;
+	double z;
+
+	Point3D() : Point3D(0, 0, 0) {}
 
 	Point3D(double xx, double yy, double zz) : x(xx), y(yy), z(zz) {}
 
@@ -21,6 +23,8 @@ public:
 
 	Vector3D normal(Point3D*, Point3D*);
 
+	double lengthSquared();
+
 	double length();
 
 	Vector3D normalize();
@@ -28,4 +32,10 @@ public:
 	Vector3D operator*(Vector3D);
 
 	Vector3D operator*(double);
+
+	Point3D operator+(Point3D);
+
+	Point3D operator-();
+
+	Point3D safe();
 };

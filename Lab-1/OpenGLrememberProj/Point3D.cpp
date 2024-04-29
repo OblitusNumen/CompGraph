@@ -16,8 +16,13 @@ Point3D Point3D::subtract(Point3D* p) {
 	return Point3D(x - p->x, y - p->y, z - p->z);
 }
 
+double Point3D::lengthSquared()
+{
+	return x * x + y * y + z * z;
+}
+
 double Point3D::length() {
-	return sqrt(x * x + y * y + z * z);
+	return sqrt(lengthSquared());
 }
 
 Vector3D Point3D::normalize() {
@@ -33,6 +38,21 @@ Vector3D Point3D::operator*(Vector3D v)
 Vector3D Point3D::operator*(double m)
 {
 	return Vector3D(x * m, y * m, z * m);
+}
+
+Point3D Point3D::operator+(Point3D p)
+{
+	return Point3D(x + p.x, y + p.y, z + p.z);
+}
+
+Point3D Point3D::operator-()
+{
+	return Point3D(-x, -y, -z);
+}
+
+Point3D Point3D::safe()
+{
+	return Point3D(x + (x == 0) * .00001, y + (y == 0) * .00001, z + (z == 0) * .00001);
 }
 
 Vector3D Point3D::normal(Point3D* pR, Point3D* pL) {

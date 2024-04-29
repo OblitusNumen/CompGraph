@@ -20,6 +20,15 @@
 
 #include "GUItextRectangle.h"
 
+//////////////
+//double zzz = 0;
+//Point3D ppp;
+//Point3D ppp1;
+//Point3D ppp2;
+//Point3D ppp3;
+//Point3D ppp4;
+////////////
+
 double t = 0;
 double pi = 3.14159265358979;
 
@@ -34,29 +43,25 @@ GLuint texIds[textureCount];
 
 //x,y,z,density,r,g,b
 int lightSourceCount = 3;
-double lightSources[][7] = { { 0, 0, 0, 0.2, .8, .2, .6 }, { 5, 10, 4, 0.03, .02, .06, .08 }, { 10, 5, 8, 0.4, .9, .9, .6 } };
+double lightSources[][7] = { { 0, 0, 0, 0.2, .8, .2, .6 }, { -2, 0, -4, 0.03, .02, .06, .08 }, { 1, -5, 3, 0.4, .9, .9, .6 } };
 
 int colorPolicy = 0;
 int colorPolicyCount = 3;
 
-double p0[]{ 6, 6 };
-double p1[]{11, 4};
-double p2[]{11, 4};
-double p3[]{ 5, 7 };
-double points0[8][2] = { {1, 0}, {6, 4}, {11, 1}, {12, 6}, {8, 8}, {5, 15}, {0, 12}, {5, 6} };
-const int count = 3;
-const int size = 8 + count * 2;
+double speed = .1;
 
-double from = 0;
-double to = 16;
-double angle0 = 0;
-double maxAngle = pi / 2;
-double sliceStep = .1;
-int additionalSlices = 2;
-double speed = 1;
+//surface
+const int dotCount = 30;
+const int controlPC = 5;
+double heights[controlPC][controlPC] = { {1, 5, 3, 4, 9}, {5, 2, 7, 8, 0}, {9, 3, 5, 1, 10}, {3, 7, 3, 5, 5}, {2, 8, 1, 0, 4} };
+//double heights[controlPC][controlPC] = { {0, 0, 0, 0}, {5, 2, 7, 8}, {9, 3, 5, 1}, {3, 7, 3, 5} };
+double fromX = 0;
+double fromY = 0;
+double length = 20;
+double minDistSquaredControl = 1;
 
-double xShift = -5;
-double yShift = -7;
+double xShift = 0;
+double yShift = 0;
 double zShift = 0;
 
 void center(double x0, double x1, double x2, double y0, double y1, double y2, double* resX, double* resY) {
@@ -90,7 +95,7 @@ void setColor(double x, double y, double z) {
 }
 
 void setColor() {
-	glColor4d(color[col++], color[col++], color[col++], .5);
+	glColor4d(color[col++], color[col++], color[col++], 1.);
 }
 
 void point(Point3D p, Vector3D normal) {
@@ -101,72 +106,17 @@ void point(Point3D p, Vector3D normal) {
 	glVertex3d(p1.x, p1.y, p1.z);
 }
 
-void drawPlane(double points[][2], int size, double pc0[2], double plane, double pivot[2], double angle, int reverse) {
-	Point3D pc = Point3D(pc0[0], pc0[1], plane).rotate(pivot, angle);
-	for (size_t i = 0; i < size; i++)
-	{
-		int j = (i + 1) % size;
-		if (!colorPolicy) setColor();
-		Point3D p0 = Point3D(points[i][0], points[i][1], plane).rotate(pivot, angle);
-		Point3D p1 = Point3D(points[j][0], points[j][1], plane).rotate(pivot, angle);
-		glTexCoord2d(reverse + (1 - reverse * 2) * .5 / 12 * pc0[0], .5 / 15 * pc0[1]);
-		point(pc, pc.normal(&p0, &p1) * (1 - 2 * reverse));
-		glTexCoord2d(reverse + (1 - reverse * 2) * .5 / 12 * points[i][0], .5 / 15 * points[i][1]);
-		point(p0, p0.normal(&p1, &pc) * (1 - 2 * reverse));
-		glTexCoord2d(reverse + (1 - reverse * 2) * .5 / 12 * points[j][0], .5 / 15 * points[j][1]);
-		point(p1, p1.normal(&pc, &p0) * (1 - 2 * reverse));
-	}
-}
-
-
-
-void drawSides(double points[][2], int size, double plane0, double plane1, double pivot[2], double a0, double a1, double textureOffsetY0, double textureOffsetY1) {
-	double sumLength = 0;
-	double curLength = 0;
-	double textureOffsetX = 0;
-	if (plane0 > plane1)
-	{
-		double p = plane0;
-		plane0 = plane1;
-		plane1 = p;
-		p = a0;
-		a0 = a1;
-		a1 = p;
-	}
-	for (size_t i = 0; i < size; i++)
-	{
-		int j = (i + 1) % size;
-		Point3D p00_0 = Point3D(points[i][0], points[i][1], plane0).rotate(pivot, a0);
-		Point3D p11_0 = Point3D(points[j][0], points[j][1], plane0).rotate(pivot, a0);
-		double l = p11_0.subtract(&p00_0).length();
-		sumLength += l;
-	}
-	for (size_t i = 0; i < size; i++)
-	{
-		int j = (i + 1) % size;
-		if (!colorPolicy) setColor();
-		Point3D p00_0 = Point3D(points[i][0], points[i][1], plane0).rotate(pivot, a0);
-		Point3D p11_0 = Point3D(points[j][0], points[j][1], plane0).rotate(pivot, a0);
-		Point3D p11_1 = Point3D(points[j][0], points[j][1], plane1).rotate(pivot, a1);
-		double l = p11_0.subtract(&p00_0).length();
-		glTexCoord2d(1. / sumLength * (curLength), .5 + .5 * textureOffsetY0);
-		point(p00_0, p00_0.normal(&p11_0, &p11_1));
-		glTexCoord2d(1. / sumLength * (curLength + l), .5 + .5 * textureOffsetY0);
-		point(p11_0, p11_0.normal(&p11_1, &p00_0));
-		glTexCoord2d(1. / sumLength * (curLength + l), .5 + .5 * textureOffsetY1);
-		point(p11_1, p11_1.normal(&p00_0, &p11_0));
-		if (!colorPolicy) setColor();
-		Point3D p00_1 = Point3D(points[i][0], points[i][1], plane1).rotate(pivot, a1);
-		glTexCoord2d(1. / sumLength * (curLength), .5 + .5 * textureOffsetY0);
-		point(p00_0, p00_0.normal(&p11_1, &p00_1));
-		//point(p00_0, p00_0.normal(&p11_0, &p11_1));
-		glTexCoord2d(1. / sumLength * (curLength + l), .5 + .5 * textureOffsetY1);
-		point(p11_1, p11_1.normal(&p00_1, &p00_0));
-		//point(p11_1, p11_1.normal(&p00_0, &p11_0));
-		glTexCoord2d(1. / sumLength * (curLength), .5 + .5 * textureOffsetY1);
-		point(p00_1, p00_1.normal(&p00_0, &p11_1));
-		curLength += l;
-	}
+Point3D intersect(Point3D planeP, Vector3D planeN, Point3D lineP, Vector3D line) {
+	planeP = planeP.safe();
+	planeN = planeN.safe();
+	lineP = lineP.safe();
+	line = line.safe();
+	double y0 = -lineP.x / line.x * line.y + lineP.y;
+	double z0 = -lineP.x / line.x * line.z + lineP.z;
+	double d = (planeN.x * planeP.x + planeN.y * planeP.y + planeN.z * planeP.z);
+	double x = (-planeN.y * y0 - planeN.z * z0 + d) / (planeN.x + planeN.y * line.y / line.x + planeN.z * line.z / line.x);
+	point(Point3D(x, x * line.y / line.x + y0, x * line.z / line.x + z0), Vector3D());
+	return Point3D(x, x * line.y / line.x + y0, x * line.z / line.x + z0);
 }
 
 void setColors() {
@@ -178,21 +128,6 @@ void setColors() {
 		}
 	}
 	col = 1;
-}
-
-void draw(double points[size][2]) {
-	double angle = maxAngle * sin(t) + angle0;
-	int steps = fabs(angle) / sliceStep + additionalSlices;
-	double angleStep = angle / (steps + 1);
-	double heightStep = (to - from) / (steps + 1);
-	drawPlane(points, size, p0, from, p3, angle0, 1);
-	for (size_t i = 0; i < steps + 1; i++)
-	{
-		drawSides(points, size, from + heightStep * i, from + heightStep * (i + 1), p3,
-			angle0 + angleStep * i, angle0 + angleStep * (i + 1),
-			i * heightStep / fabs(to - from), (i + 1) * heightStep / fabs(to - from));
-	}
-	drawPlane(points, size, p0, to, p3, angle, 0);
 }
 
 void loadTexture(char* filename, GLuint* texId) {
@@ -231,57 +166,183 @@ GLuint getTextureId() {
 	return texIds[texture];
 }
 
+Point3D getBezierPoint(Point3D** points, int pCount, double t) {
+	if (pCount == 1) return *(points[0]);
+	Point3D** newPoints = new Point3D*[pCount - 1];
+	for (int i = 0; i < pCount - 1; i++)
+	{
+		newPoints[i] = new Point3D((*(points[i]) * t) + (*(points[i + 1]) * (1 - t)));
+	}
+	Point3D point = getBezierPoint(newPoints, pCount - 1, t);
+	for (int i = 0; i < pCount - 1; i++)
+	{
+		delete newPoints[i];
+	}
+	delete[] newPoints;
+	return point;
+}
+
+void plane(Vector3D v1, Vector3D v2, Vector3D v3, Point3D offset, int light) {
+	Vector3D n = (v1 + v2 + v3).normal(&(v1 + v2 + v3 * -1), &(v1 + v2 * -1 + v3 * -1)) * -light;
+	setColor();
+	point(v1 + v2 + v3 + offset, n);
+	point(v1 + v2 + v3 * -1 + offset, n);
+	point(v1 + v2 * -1 + v3 * -1 + offset, n);
+	setColor();
+	point(v1 + v2 + v3 + offset, n);
+	setColor();
+	point(v1 + v2 * -1 + v3 + offset, n);
+	setColor();
+	point(v1 + v2 * -1 + v3 * -1 + offset, n);
+}
+
+void drawCube(Point3D p1, Point3D p2, Point3D p3) {
+	glBegin(GL_TRIANGLES);
+	Vector3D v1 = p2.subtract(&p1).normalize() * .2;
+	Vector3D v2 = p1.normal(&p2, &p3).normalize() * .2;
+	Vector3D v3 = (v1 * v2).normalize() * .2;
+	plane(v1, v2, v3, p1, 1);
+	plane(v2, v3, v1, p1, 1);
+	plane(v3, v1, v2, p1, 1);
+	plane(-v1, -v2, -v3, p1, -1);
+	plane(-v2, -v3, -v1, p1, -1);
+	plane(-v3, -v1, -v2, p1, -1);
+	glEnd();
+}
+
+double bezierHeight(double* points, int pCount, double t) {
+	if (pCount == 1) return points[0];
+	double* newPoints = new double[pCount - 1];
+	for (int i = 0; i < pCount - 1; i++)
+	{
+		newPoints[i] = (points[i] * (1 - t)) + (points[i + 1] * (t));
+	}
+	double point = bezierHeight(newPoints, pCount - 1, t);
+	delete[] newPoints;
+	return point;
+}
+
+void drawSurface() {
+	/*glBegin(GL_POINTS);
+	for (int row = 0; row < controlPC; row++)
+	{
+		for (int curPoint = 0; curPoint < controlPC; curPoint++) {
+			glVertex3d(length * (row) / controlPC, length * (curPoint) / controlPC, heights[curPoint][row]);
+		}
+	}
+	glEnd();*/
+
+	glBegin(GL_LINES);
+	for (int row = 0; row < controlPC; row++)
+	{
+		for (int curPoint = 0; curPoint < controlPC; curPoint++) {
+			if (curPoint != 0)
+			{
+				glVertex3d(length * (row) / (controlPC - 1), length * (curPoint) / (controlPC - 1), heights[curPoint][row]);
+				glVertex3d(length * (row) / (controlPC - 1), length * (curPoint - 1) / (controlPC - 1), heights[curPoint - 1][row]);
+			}
+			if (row != 0) {
+				glVertex3d(length * (row) / (controlPC - 1), length * (curPoint) / (controlPC - 1), heights[curPoint][row]);
+				glVertex3d(length * (row - 1) / (controlPC - 1), length * (curPoint) / (controlPC - 1), heights[curPoint][row - 1]);
+			}
+		}
+	}
+	glEnd();
+
+	glBegin(GL_TRIANGLES);
+	double* line = new double[dotCount];
+	for (int row = 0; row < dotCount; row++)
+	{
+		double controlL1[controlPC];
+		for (int i = 0; i < controlPC; i++)
+		{
+			controlL1[i] = bezierHeight(heights[i], controlPC, (double)row / (dotCount - 1));
+		}
+		double prev;
+		for (int curPoint = 0; curPoint < dotCount; curPoint++) {
+			double current = bezierHeight(controlL1, controlPC, (double)curPoint / (dotCount - 1));
+			if (curPoint != 0) {
+				if (row != 0) {
+					{
+						Point3D p1(length * (row - 1) / (dotCount - 1), length * (curPoint - 1) / (dotCount - 1), line[curPoint - 1]);
+						Point3D p2(length * (row - 1) / (dotCount - 1), length * (curPoint) / (dotCount - 1), line[curPoint]);
+						Point3D p3(length * (row) / (dotCount - 1), length * (curPoint) / (dotCount - 1), current);
+						Vector3D n = p1.normal(&p3, &p2);
+						glTexCoord2d((double)(row - 1) / (dotCount - 1), (double)(curPoint - 1) / (dotCount - 1));
+						point(p1, n);
+						glTexCoord2d((double)(row - 1) / (dotCount - 1), (double)(curPoint) / (dotCount - 1));
+						point(p2, n);
+						glTexCoord2d((double)(row) / (dotCount - 1), (double)(curPoint) / (dotCount - 1));
+						point(p3, n);
+					}
+					{
+						Point3D p1(length * (row - 1) / (dotCount - 1), length * (curPoint - 1) / (dotCount - 1), line[curPoint - 1]);
+						Point3D p2(length * (row) / (dotCount - 1), length * (curPoint) / (dotCount - 1), current);
+						Point3D p3(length * (row) / (dotCount - 1), length * (curPoint - 1) / (dotCount - 1), prev);
+						Vector3D n = p1.normal(&p3, &p2);
+						glTexCoord2d((double)(row - 1) / (dotCount - 1), (double)(curPoint - 1) / (dotCount - 1));
+						point(p1, n);
+						glTexCoord2d((double)(row) / (dotCount - 1), (double)(curPoint) / (dotCount - 1));
+						point(p2, n);
+						glTexCoord2d((double)(row) / (dotCount - 1), (double)(curPoint - 1) / (dotCount - 1));
+						point(p3, n);
+					}
+					/*line[point - 1];
+					line[point];
+					current;
+
+					line[point - 1];
+					current;
+					prev;*/
+				}
+				line[curPoint - 1] = prev;
+			}
+			prev = current;
+		}
+		line[dotCount - 1] = prev;
+	}
+	delete line;
+	glEnd();
+}
+
 void Render(double delta_time)
 {
 	t += delta_time * speed - (t >= 2 * pi) * 2 * pi;
+	glBegin(GL_LINES);
 	setColors();
-	glBegin(GL_TRIANGLES);
-	double points[size][2];
-	int i = 0;
-	int j = 0;
-	for (; j < 3; i++, j++) {
-		points[i][0] = points0[j][0];
-		points[i][1] = points0[j][1];
+
+	//curve
+	const int pCount = 100;
+	const int vertexCount = 8;
+	Point3D* points[vertexCount]{ &Point3D{-6, -3, -8}, &Point3D{-2, -1, -1}, &Point3D{0, -11, -17}, &Point3D{-10, -4, -8},
+		&Point3D{-2, -10, -19}, &Point3D{-12, -17, -11}, &Point3D{-10, 0, 0}, &Point3D{-6, -1, -8} };
+
+	setColor();
+	for (int i = 0; i < vertexCount - 1; i++)
+	{
+		point(*points[i], Vector3D());
+		point(*points[i + 1], Vector3D());
 	}
-	double x, y, r;
-	center(points0[2][0], p1[0], points0[3][0], points0[2][1], p1[1], points0[3][1], &x, &y);
-	r = sqrt((x - p1[0]) * (x - p1[0]) + (y - p1[1]) * (y - p1[1]));
-	double a0 = acos((points0[2][0] - x) / r);
-	double a1 = acos((points0[3][0] - x) / r);
-	if (y > points0[2][1]) a0 = -a0;
-	if (y > points0[3][0]) a1 = -a1;
-	if (a0 + 2 * pi < a1) a0 += 2 * pi;
-	if (a0 - 2 * pi > a1) a0 -= 2 * pi;
-	if (a0 < a1) a0 += 2 * pi;
-	double astep = (a1 - a0) / (count + 1);
-	for (int k = 0; k < count; k++, i++) {
-		points[i][0] = cos((k + 1) * astep + a0) * r + x;
-		points[i][1] = sin((k + 1) * astep + a0) * r + y;
+
+	setColor();
+	Point3D p1 = getBezierPoint(points, vertexCount, (double)0 / pCount);
+	Point3D p2;
+	for (int i = 0; i < pCount; i++)
+	{
+		p2 = getBezierPoint(points, vertexCount, (double)(i + 1) / pCount);
+		point(p1, Vector3D());
+		setColor();
+		point(p2, Vector3D());
+		p1 = p2;
 	}
-	for (; j < 6; i++, j++) {
-		points[i][0] = points0[j][0];
-		points[i][1] = points0[j][1];
-	}
-	center(points0[5][0], p2[0], points0[6][0], points0[5][1], p2[1], points0[6][1], &x, &y);
-	r = sqrt((x - p2[0]) * (x - p2[0]) + (y - p2[1]) * (y - p2[1]));
-	a0 = acos((points0[5][0] - x) / r);
-	a1 = acos((points0[6][0] - x) / r);
-	//if (y > points0[5][0]) a0 = -a0;
-	//if (y > points0[6][0]) a1 = -a1;
-	if (a0 + 2 * pi < a1) a0 += 2 * pi;
-	if (a0 - 2 * pi > a1) a0 -= 2 * pi;
-	//if (a0 > a1) a0 -= 2 * pi;
-	astep = (a1 - a0) / (count + 1);
-	for (int k = 0; k < count; k++, i++) {
-		points[i][0] = cos((k + 1) * astep + a0) * r + x;
-		points[i][1] = sin((k + 1) * astep + a0) * r + y;
-	}
-	for (; j < 8; i++, j++) {
-		points[i][0] = points0[j][0];
-		points[i][1] = points0[j][1];
-	}
-	draw(points);
 	glEnd();
+
+	p1 = getBezierPoint(points, vertexCount, (double)((sin(t) + 1) / 2));
+	p2 = getBezierPoint(points, vertexCount, (double)(sin(t) + 1 - (1. / pCount)) / 2);
+	Point3D p3 = getBezierPoint(points, vertexCount, (double)(sin(t) + 1 - (2. / pCount)) / 2);
+	drawCube(p1, p2, p3);
+
+	drawSurface();
 }
 
 /////////////////////////////////////////////////
@@ -406,6 +467,7 @@ public:
 
 //������ ���������� ����
 int mouseX = 0, mouseY = 0;
+int px = -1, py = -1;
 
 void mouseEvent(OpenGL *ogl, int mX, int mY)
 {
@@ -451,7 +513,67 @@ void mouseEvent(OpenGL *ogl, int mX, int mY)
 		light.pos = light.pos + Vector3(0, 0, 0.02*dy);
 	}
 
-	
+	//moving bezier points
+	if (OpenGL::isKeyPressed(VK_LBUTTON))
+	{
+		if (px == -1) {
+			//choose point here
+			Vector3 cn = camera.pos;
+			Vector3 cp = camera.pos;
+			Point3D cameraPos = Point3D(cp.X(), cp.Y(), cp.Z());
+			Vector3D planeN(cn.X(), cn.Y(), cn.Z());
+			Point3D planeP = planeN + cameraPos;
+			LPPOINT POINT = new tagPOINT();
+			GetCursorPos(POINT);
+			ScreenToClient(ogl->getHwnd(), POINT);
+			POINT->y = ogl->getHeight() - POINT->y;
+			Ray r = camera.getLookRay(POINT->x, POINT->y);
+			Vector3D cursor(r.direction.X(), r.direction.Y(), r.direction.Z());
+			Point3D cursorProj = intersect(planeP, planeN, cameraPos, cursor);
+			double minDistSquared = intersect(planeP, planeN, cameraPos, Point3D(0, 0, heights[0][0]).subtract(&cameraPos)).subtract(&cursorProj).lengthSquared();
+			int i = 0;
+			int j = 0;
+			for (int k = 0; k < controlPC; k++)
+			{
+				for (int w = 0; w < controlPC; w++) {
+					double distSquared = intersect(planeP, planeN, cameraPos,
+						Point3D(length * (w) / (controlPC - 1), length * (k) / (controlPC - 1), heights[k][w])
+						.subtract(&cameraPos)).subtract(&cursorProj).lengthSquared();
+					if (minDistSquared > distSquared)
+					{
+						i = k;
+						j = w;
+						minDistSquared = distSquared;
+					}
+				}
+			}
+			if (minDistSquared < minDistSquaredControl)
+			{
+				px = i;
+				py = j;
+			}
+		}
+		else {
+			//move point here
+			Vector3 cn = camera.pos;
+			Vector3 cp = camera.pos;
+			Point3D cameraPos = Point3D(cp.X(), cp.Y(), cp.Z());
+			Vector3D planeN(cn.X(), cn.Y(), 0);
+			LPPOINT POINT = new tagPOINT();
+			GetCursorPos(POINT);
+			ScreenToClient(ogl->getHwnd(), POINT);
+			POINT->y = ogl->getHeight() - POINT->y;
+			Ray r = camera.getLookRay(POINT->x, POINT->y);
+			Vector3D cursor(r.direction.X(), r.direction.Y(), r.direction.Z());
+			Point3D movable(length * (py) / (controlPC - 1), length * (px) / (controlPC - 1), heights[px][py]);
+			Point3D intersection = intersect(movable, planeN, cameraPos, cursor);
+			heights[px][py] = intersection.z;
+		}
+	}
+	else {
+		px = -1;
+		py = -1;
+	}
 }
 
 void mouseWheelEvent(OpenGL *ogl, int delta)
